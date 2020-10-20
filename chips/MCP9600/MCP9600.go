@@ -1,4 +1,4 @@
-package MCP9600
+package mcp9600
 
 import (
 	"encoding/binary"
@@ -8,6 +8,7 @@ import (
 	"periph.io/x/periph/conn/i2c"
 )
 
+// Dev - i2c.Dev associated with mcp9600
 type Dev struct {
 	Device *i2c.Dev
 }
@@ -47,7 +48,6 @@ func (d *Dev) getRegisterBits(r Register, bytes int, highBit, lowBit byte) (byte
 	i := highBit / 8
 
 	return helpers.SelectBits(raw[i], highBit%8, lowBit%8), nil
-
 }
 
 func convertTemp(t []byte) float64 {
@@ -57,10 +57,13 @@ func convertTemp(t []byte) float64 {
 // **************************************************
 // Thermocouple Type
 // **************************************************
+
+// SetThermocoupleType - Set thermocouple type
 func (d *Dev) SetThermocoupleType(t ThermocoupleType) error {
 	return d.setRegisterBits(RegisterSensorConfig, 1, 6, 4, byte(t))
 }
 
+// GetThermocoupleType - Get thermocouple type
 func (d *Dev) GetThermocoupleType() (ThermocoupleType, error) {
 	raw, err := d.getRegisterBits(RegisterSensorConfig, 1, 6, 4)
 
@@ -70,10 +73,13 @@ func (d *Dev) GetThermocoupleType() (ThermocoupleType, error) {
 // **************************************************
 // Filter Coefficients
 // **************************************************
+
+// SetFilterCoefficient - Set coefficient used in temperature filter
 func (d *Dev) SetFilterCoefficient(f FilterCoefficient) error {
 	return d.setRegisterBits(RegisterSensorConfig, 1, 2, 0, byte(f))
 }
 
+// GetFilterCoefficient - Get coefficient used in temperature filter
 func (d *Dev) GetFilterCoefficient() (FilterCoefficient, error) {
 	raw, err := d.getRegisterBits(RegisterSensorConfig, 1, 2, 0)
 
@@ -83,10 +89,15 @@ func (d *Dev) GetFilterCoefficient() (FilterCoefficient, error) {
 // **************************************************
 // Cold Junction Resolution
 // **************************************************
+
+// SetColdJunctionResolution - Set ADC resolution used when converting
+// cold-junction temperature
 func (d *Dev) SetColdJunctionResolution(r ColdJuncitonResolution) error {
 	return d.setRegisterBits(RegisterDeviceConfig, 1, 7, 7, byte(r))
 }
 
+// GetColdJunctionResolution - Get ADC resolution used when converting
+// cold-junction temperature
 func (d *Dev) GetColdJunctionResolution() (ColdJuncitonResolution, error) {
 	raw, err := d.getRegisterBits(RegisterDeviceConfig, 1, 7, 7)
 
@@ -96,10 +107,15 @@ func (d *Dev) GetColdJunctionResolution() (ColdJuncitonResolution, error) {
 // **************************************************
 // ADC Resolution
 // **************************************************
+
+// SetADCResolution - Set ADC resolution used in converting
+// hot junction temperature
 func (d *Dev) SetADCResolution(r ADCResolution) error {
 	return d.setRegisterBits(RegisterDeviceConfig, 1, 6, 5, byte(r))
 }
 
+// GetADCResolution - Return ADC resolution used in converting
+// hot junction temperature
 func (d *Dev) GetADCResolution() (ADCResolution, error) {
 	raw, err := d.getRegisterBits(RegisterDeviceConfig, 1, 6, 5)
 
@@ -109,10 +125,15 @@ func (d *Dev) GetADCResolution() (ADCResolution, error) {
 // **************************************************
 // Burst Mode Samples
 // **************************************************
+
+// SetBurstModeSamples - Set number of samples to be captured in
+// burst mode
 func (d *Dev) SetBurstModeSamples(s BurstModeSamples) error {
 	return d.setRegisterBits(RegisterDeviceConfig, 1, 4, 2, byte(s))
 }
 
+// GetBurstModeSamples - Return number of samples that will be captured
+// in burst mode
 func (d *Dev) GetBurstModeSamples() (BurstModeSamples, error) {
 	raw, err := d.getRegisterBits(RegisterDeviceConfig, 1, 4, 2)
 
@@ -122,10 +143,13 @@ func (d *Dev) GetBurstModeSamples() (BurstModeSamples, error) {
 // **************************************************
 // Shutdown Mode
 // **************************************************
+
+// SetShutdownMode - Sets mcp9600 operating mode
 func (d *Dev) SetShutdownMode(s ShutdownMode) error {
 	return d.setRegisterBits(RegisterDeviceConfig, 1, 1, 0, byte(s))
 }
 
+// GetShutdownMode - Returns current mcp9600 operating mode
 func (d *Dev) GetShutdownMode() (ShutdownMode, error) {
 	raw, err := d.getRegisterBits(RegisterDeviceConfig, 1, 1, 0)
 
@@ -135,6 +159,8 @@ func (d *Dev) GetShutdownMode() (ShutdownMode, error) {
 // **************************************************
 // Temperatures
 // **************************************************
+
+// GetTemp returns cold-junction compensated thermocouple temperature
 func (d *Dev) GetTemp() (float64, error) {
 	raw, err := helpers.ReadI2C(d.Device, byte(RegisterTHot), 2)
 
@@ -145,6 +171,7 @@ func (d *Dev) GetTemp() (float64, error) {
 	return convertTemp(raw), nil
 }
 
+// GetAmbientTemp returns cold junction temp
 func (d *Dev) GetAmbientTemp() (float64, error) {
 	raw, err := helpers.ReadI2C(d.Device, byte(RegisterTCold), 2)
 

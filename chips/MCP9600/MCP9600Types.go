@@ -1,4 +1,4 @@
-package MCP9600
+package mcp9600
 
 type Register byte
 
