@@ -1,13 +1,21 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
 	"time"
 
+	"github.com/feilb/Silvia/api"
 	"github.com/feilb/Silvia/chips/ads1115"
 	"github.com/feilb/Silvia/chips/mcp9600"
-	"github.com/feilb/Silvia/machine/modulator"
-	"github.com/feilb/Silvia/utils/i2cUtils"
+	"github.com/feilb/Silvia/machine/manager"
+	"github.com/feilb/Silvia/machine/pid"
+	"github.com/gorilla/mux"
 	"periph.io/x/periph/conn/gpio"
 	"periph.io/x/periph/conn/gpio/gpioreg"
 	"periph.io/x/periph/conn/i2c"
@@ -52,6 +60,8 @@ func main() {
 	mcp.SetADCResolution(mcp9600.ADCResolution16Bit)
 	mcp.SetColdJunctionResolution(mcp9600.ColdJuncitonResolution0p25)
 
+	var CurTemp float64 = 0
+
 	// **************************************************
 	// ADS1115 ADC Init
 	// **************************************************
@@ -62,70 +72,152 @@ func main() {
 	adc.SetMux(ads1115.Mux0v3)
 	adc.SetMode(ads1115.ModeSingle)
 
-	r, _ := adc.GetRange()
-	d, _ := adc.GetDataRate()
-	m, _ := adc.GetMux()
-	o, _ := adc.GetMode()
-	fmt.Printf("range: %v\n", r)
-	fmt.Printf("rate: %v\n", d)
-	fmt.Printf("mux: %v\n", m)
-	fmt.Printf("mode: %v\n", o)
-
-	cfg, _ := i2cUtils.ReadI2C(adc.Device, byte(ads1115.RegisterConfig), 2)
-	fmt.Printf("raw: %08b\n", cfg)
+	//var CurPress float64 = 0
 
 	// **************************************************
 	// PID Init
 	// **************************************************
-	/*pid := pid.PID{
-		Kp:       0.0375,
-		Ki:       0.0002727,
-		Kd:       1.289,
-		OutMax:   1,
-		OutMin:   0,
-		Setpoint: 40,
-	}*/
+	pid := pid.PID{
+		Kp:     0.0375,
+		Ki:     0.0002727,
+		Kd:     1.289,
+		OutMax: 1,
+		OutMin: 0,
+	}
+
+	// **************************************************
+	// Manager Init
+	// **************************************************
+	mgr := manager.Manager{
+		BrewSetpoint:  0,
+		SteamSetpoint: 0,
+		Mode:          manager.ModeOff,
+		BoilerPin:     boilerPin,
+		PumpPin:       pumpPin,
+		ValvePin:      valvePin,
+		Controller:    &pid,
+		TempUpdate:    make(chan float64),
+		Tick:          make(chan time.Time),
+	}
+
+	// **************************************************
+	// REST Init
+	// **************************************************
+	router := mux.NewRouter()
+	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "hello, world!\n")
+	})
+
+	router.HandleFunc("/status", func(rw http.ResponseWriter, r *http.Request) {
+		resp := api.GetStatus{
+			Mode:               mgr.Mode.String(),
+			CurrentSetpoint:    mgr.CurrentSetpoint(),
+			BrewSetpoint:       mgr.BrewSetpoint,
+			SteamSetpoint:      mgr.SteamSetpoint,
+			CurrentPressure:    0,
+			CurrentTemperature: CurTemp,
+		}
+
+		rw.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(rw).Encode(resp)
+	}).Methods("GET")
+
+	router.HandleFunc("/mode", func(rw http.ResponseWriter, r *http.Request) {
+		resp := api.GetSetString{
+			Value: mgr.Mode.String(),
+		}
+
+		rw.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(rw).Encode(resp)
+	}).Methods("GET")
+
+	router.HandleFunc("/mode/{mode}", func(rw http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+
+		newMode := manager.ModeFromString(vars["mode"])
+
+		if newMode == manager.ModeInvalid {
+			http.Error(rw, "Invalid Mode", http.StatusBadRequest)
+		} else {
+			mgr.Mode = newMode
+		}
+	}).Methods("POST")
+
+	router.HandleFunc("/setpoint/{type}", func(rw http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+
+		resp := api.GetSetFloat{}
+		badReq := false
+
+		switch strings.ToUpper(vars["type"]) {
+		case "CURRENT":
+			resp.Value = mgr.CurrentSetpoint()
+		case "BREW":
+			resp.Value = mgr.BrewSetpoint
+		case "STEAM":
+			resp.Value = mgr.SteamSetpoint
+		default:
+			badReq = true
+		}
+
+		if badReq {
+			http.Error(rw, "", http.StatusNotFound)
+		} else {
+			rw.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(rw).Encode(resp)
+		}
+	}).Methods("GET")
+
+	router.HandleFunc("/setpoint/{type}", func(rw http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+
+		jsonVal := api.GetSetFloat{}
+		err := json.NewDecoder(r.Body).Decode(&jsonVal)
+
+		if err != nil {
+			http.Error(rw, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		switch strings.ToUpper(vars["type"]) {
+		case "CURRENT":
+			http.Error(rw, "", http.StatusMethodNotAllowed)
+		case "BREW":
+			mgr.BrewSetpoint = jsonVal.Value
+		case "STEAM":
+			mgr.SteamSetpoint = jsonVal.Value
+		default:
+			http.Error(rw, "", http.StatusNotFound)
+		}
+	}).Methods("POST")
 
 	// **************************************************
 	// START
 	// **************************************************
 
-	start := time.Now()
-
-	fmt.Println("Modulator output = 0")
-	mod := modulator.Modulator{Setpoint: 0.00}
-
 	go func() {
-		fmt.Println("zero crossing function")
 		for {
 			zeroCrossingPin.WaitForEdge(time.Second)
-			if mod.Modulate() == 1 {
-				boilerPin.Out(gpio.High)
-			} else {
-				boilerPin.Out(gpio.Low)
-			}
+
+			mgr.Tick <- time.Now()
 		}
 	}()
 
 	defer func() {
-		fmt.Println("boiler low func")
 		boilerPin.Out(gpio.Low)
 	}()
 
-	var temp float64
-
 	go func() {
-		fmt.Println("temp reading fn")
 		for {
-			temp, _ = mcp.GetTemp()
+			CurTemp, _ = mcp.GetTemp()
 
-			//mod.Setpoint = pid.Compute(temp)
-			fmt.Printf("%v,%v,%v\n", time.Since(start).Milliseconds(), temp, mod.Setpoint)
-			time.Sleep(time.Second * 5)
+			mgr.TempUpdate <- CurTemp
+			time.Sleep(time.Second * 1)
 		}
-
 	}()
 
+	defer mgr.Close()
+	go mgr.Run()
 	/*
 		fmt.Println("Waiting 10s...")
 		time.Sleep(time.Second * 10)
@@ -133,7 +225,16 @@ func main() {
 		time.Sleep(time.Hour * 6)
 	*/
 
-	pumpPin.Out(gpio.High)
-	time.Sleep(time.Millisecond * 500)
-	pumpPin.Out(gpio.Low)
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		for range c {
+			mgr.Close()
+			os.Exit(1)
+		}
+	}()
+
+	fmt.Println("Listening on 8080...")
+	http.ListenAndServe(":8080", router)
+
 }

@@ -4,7 +4,6 @@ import "fmt"
 
 type PID struct {
 	Kp, Ki, Kd     float64
-	Setpoint       float64
 	OutMin, OutMax float64
 	lastInput      float64
 	iTerm          float64
@@ -23,8 +22,8 @@ func limit(a, min, max float64) float64 {
 	}
 }
 
-func (p *PID) Compute(input float64) float64 {
-	e := p.Setpoint - input
+func (p *PID) Compute(setpoint, input float64) float64 {
+	e := setpoint - input
 	p.iTerm += p.Ki * e
 
 	p.iTerm = limit(p.iTerm, p.OutMin, p.OutMax)
@@ -36,7 +35,7 @@ func (p *PID) Compute(input float64) float64 {
 	output = limit(output, p.OutMin, p.OutMax)
 
 	if debug {
-		fmt.Printf("i: %.4f, s: %.4f, e: %.4f, i: %.4f, d: %.4f, PT: %.4f, IT: %.4f, DT: %.4f, O: %.4f\n", input, p.Setpoint, e, p.iTerm, d, p.Kp*e, p.iTerm, p.Kd*d, output)
+		fmt.Printf("i: %.4f, s: %.4f, e: %.4f, i: %.4f, d: %.4f, PT: %.4f, IT: %.4f, DT: %.4f, O: %.4f\n", input, setpoint, e, p.iTerm, d, p.Kp*e, p.iTerm, p.Kd*d, output)
 	}
 	return output
 }
