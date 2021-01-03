@@ -4,15 +4,24 @@ import (
 	"fmt"
 	"time"
 
-	mcp9600 "github.com/feilb/Silvia/chips/mcp9600"
+	"github.com/feilb/Silvia/chips/ads1115"
+	"github.com/feilb/Silvia/chips/mcp9600"
+	"github.com/feilb/Silvia/machine/modulator"
+	"github.com/feilb/Silvia/utils/i2cUtils"
+	"periph.io/x/periph/conn/gpio"
+	"periph.io/x/periph/conn/gpio/gpioreg"
 	"periph.io/x/periph/conn/i2c"
 	"periph.io/x/periph/conn/i2c/i2creg"
 	"periph.io/x/periph/host"
 )
 
 func main() {
+	// **************************************************
+	// periph.io Init
+	// **************************************************
 	host.Init()
 
+	// I2C
 	i2cBus, err := i2creg.Open("")
 
 	if err != nil {
@@ -20,40 +29,111 @@ func main() {
 		return
 	}
 
-	fmt.Println(i2cBus)
+	//GPIO
+	boilerPin := gpioreg.ByName("GPIO19")
+	boilerPin.Out(gpio.Low)
+
+	valvePin := gpioreg.ByName("GPIO13")
+	valvePin.Out(gpio.Low)
+
+	pumpPin := gpioreg.ByName("GPIO26")
+	pumpPin.Out(gpio.Low)
+
+	zeroCrossingPin := gpioreg.ByName("GPIO24")
+	zeroCrossingPin.In(gpio.PullUp, gpio.RisingEdge)
+
+	// **************************************************
+	// MCP9600 Thermocouple Sensor Init
+	// **************************************************
 	mcp := mcp9600.Dev{Device: &i2c.Dev{Addr: 0x60, Bus: i2cBus}}
 
 	mcp.SetThermocoupleType(mcp9600.TypeK)
-	tcType, _ := mcp.GetThermocoupleType()
-	fmt.Printf("Type: %v\n", tcType)
+	mcp.SetFilterCoefficient(mcp9600.FilterCoefficient4)
+	mcp.SetADCResolution(mcp9600.ADCResolution16Bit)
+	mcp.SetColdJunctionResolution(mcp9600.ColdJuncitonResolution0p25)
 
-	mcp.SetFilterCoefficient(mcp9600.FilterCoefficient2)
-	coef, _ := mcp.GetFilterCoefficient()
-	fmt.Printf("Coef: %v\n", coef)
+	// **************************************************
+	// ADS1115 ADC Init
+	// **************************************************
+	adc := ads1115.Dev{Device: &i2c.Dev{Addr: 0x48, Bus: i2cBus}}
+	adcRange := ads1115.Range4p096
 
-	mcp.SetADCResolution(mcp9600.ADCResolution18Bit)
-	adc, _ := mcp.GetADCResolution()
-	fmt.Printf("ADCR: %v\n", adc)
+	adc.SetRange(adcRange)
+	adc.SetMux(ads1115.Mux0v3)
+	adc.SetMode(ads1115.ModeSingle)
 
-	mcp.SetColdJunctionResolution(mcp9600.ColdJuncitonResolution0p0625)
-	cjr, _ := mcp.GetColdJunctionResolution()
-	fmt.Printf("CJR: %v\n", cjr)
+	r, _ := adc.GetRange()
+	d, _ := adc.GetDataRate()
+	m, _ := adc.GetMux()
+	o, _ := adc.GetMode()
+	fmt.Printf("range: %v\n", r)
+	fmt.Printf("rate: %v\n", d)
+	fmt.Printf("mux: %v\n", m)
+	fmt.Printf("mode: %v\n", o)
 
-	mcp.SetBurstModeSamples(mcp9600.BurstMode2Samples)
-	sam, _ := mcp.GetBurstModeSamples()
-	fmt.Printf("BMS: %v\n", sam)
+	cfg, _ := i2cUtils.ReadI2C(adc.Device, byte(ads1115.RegisterConfig), 2)
+	fmt.Printf("raw: %08b\n", cfg)
 
-	mcp.SetShutdownMode(mcp9600.ModeNormal)
-	sdm, _ := mcp.GetShutdownMode()
-	fmt.Printf("SDM: %v\n", sdm)
+	// **************************************************
+	// PID Init
+	// **************************************************
+	/*pid := pid.PID{
+		Kp:       0.0375,
+		Ki:       0.0002727,
+		Kd:       1.289,
+		OutMax:   1,
+		OutMin:   0,
+		Setpoint: 40,
+	}*/
 
-	ctemp, _ := mcp.GetAmbientTemp()
-	fmt.Printf("tamb: %v\n", ctemp)
+	// **************************************************
+	// START
+	// **************************************************
 
-	for {
-		temp, _ := mcp.GetTemp()
-		fmt.Printf("temp: %v\n", temp)
-		time.Sleep(time.Second)
-	}
+	start := time.Now()
 
+	fmt.Println("Modulator output = 0")
+	mod := modulator.Modulator{Setpoint: 0.00}
+
+	go func() {
+		fmt.Println("zero crossing function")
+		for {
+			zeroCrossingPin.WaitForEdge(time.Second)
+			if mod.Modulate() == 1 {
+				boilerPin.Out(gpio.High)
+			} else {
+				boilerPin.Out(gpio.Low)
+			}
+		}
+	}()
+
+	defer func() {
+		fmt.Println("boiler low func")
+		boilerPin.Out(gpio.Low)
+	}()
+
+	var temp float64
+
+	go func() {
+		fmt.Println("temp reading fn")
+		for {
+			temp, _ = mcp.GetTemp()
+
+			//mod.Setpoint = pid.Compute(temp)
+			fmt.Printf("%v,%v,%v\n", time.Since(start).Milliseconds(), temp, mod.Setpoint)
+			time.Sleep(time.Second * 5)
+		}
+
+	}()
+
+	/*
+		fmt.Println("Waiting 10s...")
+		time.Sleep(time.Second * 10)
+		mod.Setpoint = 0.05
+		time.Sleep(time.Hour * 6)
+	*/
+
+	pumpPin.Out(gpio.High)
+	time.Sleep(time.Millisecond * 500)
+	pumpPin.Out(gpio.Low)
 }

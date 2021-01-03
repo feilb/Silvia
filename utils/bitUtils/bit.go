@@ -1,4 +1,4 @@
-package helpers
+package bitUtils
 
 func SelectBits(cur byte, highBit, lowBit byte) byte {
 	mask := byte(0)

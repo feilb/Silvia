@@ -1,4 +1,4 @@
-package helpers
+package bitUtils
 
 import (
 	"testing"

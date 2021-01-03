@@ -4,21 +4,21 @@ type Register byte
 
 const (
 	RegisterTHot         Register = 0
-	RegisterTDelta                = 1
-	RegisterTCold                 = 2
-	RegisterRawADC                = 3
-	RegisterStatus                = 4
-	RegisterSensorConfig          = 5
-	RegisterDeviceConfig          = 6
+	RegisterTDelta       Register = 1
+	RegisterTCold        Register = 2
+	RegisterRawADC       Register = 3
+	RegisterStatus       Register = 4
+	RegisterSensorConfig Register = 5
+	RegisterDeviceConfig Register = 6
 )
 
 type ADCResolution byte
 
 const (
 	ADCResolution18Bit ADCResolution = 0
-	ADCResolution16Bit               = 1
-	ADCResolution14Bit               = 2
-	ADCResolution12Bit               = 3
+	ADCResolution16Bit ADCResolution = 1
+	ADCResolution14Bit ADCResolution = 2
+	ADCResolution12Bit ADCResolution = 3
 )
 
 func (adr ADCResolution) String() string {
@@ -40,13 +40,13 @@ type ThermocoupleType byte
 
 const (
 	TypeK ThermocoupleType = 0
-	TypeJ                  = 1
-	TypeT                  = 2
-	TypeN                  = 3
-	TypeS                  = 4
-	TypeE                  = 5
-	TypeB                  = 6
-	TypeR                  = 7
+	TypeJ ThermocoupleType = 1
+	TypeT ThermocoupleType = 2
+	TypeN ThermocoupleType = 3
+	TypeS ThermocoupleType = 4
+	TypeE ThermocoupleType = 5
+	TypeB ThermocoupleType = 6
+	TypeR ThermocoupleType = 7
 )
 
 func (tt ThermocoupleType) String() string {
@@ -75,8 +75,8 @@ func (tt ThermocoupleType) String() string {
 type ColdJuncitonResolution byte
 
 const (
-	ColdJuncitonResolution0p0625 = 0
-	ColdJuncitonResolution0p25   = 1
+	ColdJuncitonResolution0p0625 ColdJuncitonResolution = 0
+	ColdJuncitonResolution0p25   ColdJuncitonResolution = 1
 )
 
 func (cjr ColdJuncitonResolution) String() string {
@@ -94,26 +94,26 @@ type FilterCoefficient byte
 
 const (
 	FilterCoefficient0 FilterCoefficient = 0
-	FilterCoefficient1                   = 1
-	FilterCoefficient2                   = 2
-	FilterCoefficient3                   = 3
-	FilterCoefficient4                   = 4
-	FilterCoefficient5                   = 5
-	FilterCoefficient6                   = 6
-	FilterCoefficient7                   = 7
+	FilterCoefficient1 FilterCoefficient = 1
+	FilterCoefficient2 FilterCoefficient = 2
+	FilterCoefficient3 FilterCoefficient = 3
+	FilterCoefficient4 FilterCoefficient = 4
+	FilterCoefficient5 FilterCoefficient = 5
+	FilterCoefficient6 FilterCoefficient = 6
+	FilterCoefficient7 FilterCoefficient = 7
 )
 
 type BurstModeSamples byte
 
 const (
 	BurstMode1Sample    BurstModeSamples = 0
-	BurstMode2Samples                    = 1
-	BurstMode4Samples                    = 2
-	BurstMode8Samples                    = 3
-	BurstMode16Samples                   = 4
-	BurstMode32Samples                   = 5
-	BurstMode64Samples                   = 6
-	BurstMode128Samples                  = 7
+	BurstMode2Samples   BurstModeSamples = 1
+	BurstMode4Samples   BurstModeSamples = 2
+	BurstMode8Samples   BurstModeSamples = 3
+	BurstMode16Samples  BurstModeSamples = 4
+	BurstMode32Samples  BurstModeSamples = 5
+	BurstMode64Samples  BurstModeSamples = 6
+	BurstMode128Samples BurstModeSamples = 7
 )
 
 func (bm BurstModeSamples) String() string {
@@ -143,8 +143,8 @@ type ShutdownMode byte
 
 const (
 	ModeNormal   ShutdownMode = 0
-	ModeShutdown              = 1
-	ModeBurst                 = 2
+	ModeShutdown ShutdownMode = 1
+	ModeBurst    ShutdownMode = 2
 )
 
 func (sm ShutdownMode) String() string {

@@ -1,0 +1,8 @@
+range: +/- 4.096V
+rate: 128 SPS
+mux: AIN0 - AIN3
+mode: Single
+raw: [10010011 10000011]
+Modulator output = 0
+Waiting 10s...
+zero crossing function
