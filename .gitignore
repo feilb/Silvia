@@ -12,7 +12,7 @@
 *.out
 
 # Datalog files
-*.csv
+testlogs
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
