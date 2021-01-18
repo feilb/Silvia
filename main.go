@@ -16,6 +16,7 @@ import (
 	"github.com/feilb/Silvia/machine/manager"
 	"github.com/feilb/Silvia/machine/pid"
 	"github.com/gorilla/mux"
+	"github.com/rs/cors"
 	"periph.io/x/periph/conn/gpio"
 	"periph.io/x/periph/conn/gpio/gpioreg"
 	"periph.io/x/periph/conn/i2c"
@@ -234,7 +235,8 @@ func main() {
 		}
 	}()
 
-	fmt.Println("Listening on 8080...")
-	http.ListenAndServe(":8080", router)
+	handler := cors.Default().Handler(router)
+	fmt.Println("Listening on 8081...")
+	http.ListenAndServe(":8081", handler)
 
 }
