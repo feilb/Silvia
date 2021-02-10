@@ -79,19 +79,22 @@ func main() {
 	// PID Init
 	// **************************************************
 	pid := pid.PID{
-		Kp:     0.0375,
-		Ki:     0.0002727,
-		Kd:     1.289,
-		OutMax: 1,
-		OutMin: 0,
+		Kp: 0.035,
+		//Ki: 0.0002727,
+		Ki: 0.00015,
+		Kd: 1.3 / 5,
+		//Kd:     0,
+		LastInput: make([]float64, 5),
+		OutMax:    1,
+		OutMin:    0,
 	}
 
 	// **************************************************
 	// Manager Init
 	// **************************************************
 	mgr := manager.Manager{
-		BrewSetpoint:  0,
-		SteamSetpoint: 0,
+		BrewSetpoint:  100,
+		SteamSetpoint: 140,
 		Mode:          manager.ModeOff,
 		BoilerPin:     boilerPin,
 		PumpPin:       pumpPin,
