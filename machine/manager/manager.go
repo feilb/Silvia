@@ -8,10 +8,8 @@ import (
 )
 
 func (m *Manager) manageMode() {
-	if m.lastMode == m.Mode {
-		return
-	}
 
+	resetTimer := false
 	switch m.Mode {
 	case ModeOff:
 		m.PumpPin.Out(gpio.Low)
@@ -23,24 +21,27 @@ func (m *Manager) manageMode() {
 		m.PumpPin.Out(gpio.Low)
 		m.ValvePin.Out(gpio.Low)
 		m.setpoint = m.BrewSetpoint
-		m.resetTimer()
+		resetTimer = true
 	case ModeBrew:
 		m.PumpPin.Out(gpio.High)
 		m.ValvePin.Out(gpio.High)
 		m.setpoint = m.BrewSetpoint
-		m.resetTimer()
+		resetTimer = true
 	case ModeWater:
 		m.PumpPin.Out(gpio.High)
 		m.ValvePin.Out(gpio.Low)
 		m.setpoint = m.BrewSetpoint
-		m.resetTimer()
+		resetTimer = true
 	case ModeSteam:
 		m.PumpPin.Out(gpio.Low)
 		m.ValvePin.Out(gpio.Low)
 		m.setpoint = m.SteamSetpoint
-		m.resetTimer()
+		resetTimer = true
 	}
 
+	if m.lastMode != m.Mode && resetTimer {
+		m.resetTimer()
+	}
 	m.lastMode = m.Mode
 }
 
