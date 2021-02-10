@@ -8,6 +8,14 @@ type GetSetFloat struct {
 	Value float64
 }
 
+type GetSetBool struct {
+	Value bool
+}
+
+type GetSetInt struct {
+	Value int
+}
+
 type GetStatus struct {
 	Mode               string
 	CurrentSetpoint    float64

@@ -126,6 +126,45 @@ func main() {
 		json.NewEncoder(rw).Encode(resp)
 	}).Methods("GET")
 
+	router.HandleFunc("/autooff", func(rw http.ResponseWriter, r *http.Request) {
+		resp := api.GetSetBool{
+			Value: mgr.AutoOffEnabled(),
+		}
+
+		rw.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(rw).Encode(resp)
+	}).Methods("GET")
+
+	router.HandleFunc("/autooff/enable", func(rw http.ResponseWriter, r *http.Request) {
+		mgr.EnableAutoOff()
+	}).Methods("POST")
+
+	router.HandleFunc("/autooff/disable", func(rw http.ResponseWriter, r *http.Request) {
+		mgr.DisableAutoOff()
+	}).Methods("POST")
+
+	router.HandleFunc("/autooff/duration", func(rw http.ResponseWriter, r *http.Request) {
+		resp := api.GetSetFloat{
+			Value: mgr.AutoOffDuration().Minutes(),
+		}
+
+		rw.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(rw).Encode(resp)
+	}).Methods("GET")
+
+	router.HandleFunc("/autooff/duration", func(rw http.ResponseWriter, r *http.Request) {
+		jsonVal := api.GetSetFloat{}
+		err := json.NewDecoder(r.Body).Decode(&jsonVal)
+
+		if err != nil {
+			http.Error(rw, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		mgr.SetAutoOffDuration(time.Minute * time.Duration(jsonVal.Value))
+
+	}).Methods("POST")
+
 	router.HandleFunc("/mode", func(rw http.ResponseWriter, r *http.Request) {
 		resp := api.GetSetString{
 			Value: mgr.Mode.String(),
@@ -222,6 +261,9 @@ func main() {
 
 	defer mgr.Close()
 	go mgr.Run()
+	time.Sleep(time.Second)
+	mgr.SetAutoOffDuration(time.Hour)
+	mgr.EnableAutoOff()
 	/*
 		fmt.Println("Waiting 10s...")
 		time.Sleep(time.Second * 10)

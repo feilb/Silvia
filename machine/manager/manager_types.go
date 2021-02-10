@@ -67,7 +67,11 @@ type Manager struct {
 
 	BoilerPin, ValvePin, PumpPin gpio.PinIO
 
-	setpoint  float64
-	modulator modulator.Modulator
-	closer    chan time.Time
+	setpoint         float64
+	modulator        modulator.Modulator
+	closer           chan time.Time
+	autoOffEnabled   bool
+	autoOffTimer     *time.Timer
+	autoOffDurration time.Duration
+	lastMode         Mode
 }
