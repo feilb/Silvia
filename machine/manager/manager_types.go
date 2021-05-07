@@ -73,5 +73,6 @@ type Manager struct {
 	autoOffEnabled   bool
 	autoOffTimer     *time.Timer
 	autoOffDurration time.Duration
+	brewStartTime    time.Time
 	lastMode         Mode
 }

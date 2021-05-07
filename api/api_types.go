@@ -18,6 +18,7 @@ type GetSetInt struct {
 
 type GetStatus struct {
 	Mode               string
+	BrewTime           float64
 	CurrentSetpoint    float64
 	BrewSetpoint       float64
 	SteamSetpoint      float64

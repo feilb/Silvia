@@ -115,6 +115,7 @@ func main() {
 	router.HandleFunc("/status", func(rw http.ResponseWriter, r *http.Request) {
 		resp := api.GetStatus{
 			Mode:               mgr.Mode.String(),
+			BrewTime:           mgr.BrewTime().Seconds(),
 			CurrentSetpoint:    mgr.CurrentSetpoint(),
 			BrewSetpoint:       mgr.BrewSetpoint,
 			SteamSetpoint:      mgr.SteamSetpoint,

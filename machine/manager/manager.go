@@ -16,6 +16,7 @@ func (m *Manager) manageMode() {
 		m.ValvePin.Out(gpio.Low)
 		m.BoilerPin.Out(gpio.Low)
 		m.modulator.Setpoint = 0
+		m
 		m.autoOffTimer.Stop()
 	case ModeHeat:
 		m.PumpPin.Out(gpio.Low)
@@ -23,6 +24,9 @@ func (m *Manager) manageMode() {
 		m.setpoint = m.BrewSetpoint
 		resetTimer = true
 	case ModeBrew:
+		if m.lastMode != ModeBrew {
+			m.brewStartTime = time.Now()
+		}
 		m.PumpPin.Out(gpio.High)
 		m.ValvePin.Out(gpio.High)
 		m.setpoint = m.BrewSetpoint
@@ -51,6 +55,14 @@ func (m *Manager) resetTimer() {
 		m.autoOffTimer.Stop()
 		m.autoOffTimer.Reset(m.autoOffDurration)
 	}
+}
+
+func (m *Manager) BrewTime() time.Duration {
+	if m.Mode != ModeBrew {
+		return 0 * time.Second
+	}
+
+	return time.Since(m.brewStartTime)
 }
 
 func (m *Manager) CurrentSetpoint() float64 {
